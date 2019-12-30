@@ -28,14 +28,14 @@ void concat_srcname(char *srcname, char *dstname) {
 void copy_file(int srcfd, int dstfd) {
     int nbytes;
     char buf[2048] = {};
-    while ((nbytes = read(srcfd, buf, 2048) > 0)) {
+    while ((nbytes = read(srcfd, buf, 2048)) > 0) {
         write(dstfd, buf, nbytes);
     }
 }
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
-        printf(2, "Usage: cp source dest");
+        printf(2, "Usage: cp source dest\n");
         exit();
     }
 
