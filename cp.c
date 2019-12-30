@@ -17,12 +17,11 @@ int isdir(int fd) {
 // Result:
 //     dstname: 3/2.txt
 void concat_srcname(char *srcname, char *dstname) {
-    char *tmp;
-    char *src = srcname;
-    while ((tmp = strchr(srcname, '/'))) {
-        src = tmp + 1;
+    char *tmp = srcname;
+    while ((tmp = strchr(tmp, '/'))) {
+        srcname = ++tmp;
     }
-    strcat(src, dstname);
+    strcat(dstname, srcname);
 }
 
 void copy_file(int srcfd, int dstfd) {
@@ -40,7 +39,8 @@ int main(int argc, char *argv[]) {
     }
 
     char *srcname = argv[1];
-    char *dstname = argv[2];
+    char dstname[200];
+    strcpy(dstname, argv[2]);
 
     int srcfd = open(srcname, O_RDONLY);
     if (srcfd == -1) {
