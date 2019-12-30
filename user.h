@@ -26,6 +26,7 @@ int uptime(void);
 
 // ulib.c
 int stat(const char*, struct stat*);
+char* strcat(char *dest, const char* src);
 char* strcpy(char*, const char*);
 void *memmove(void*, const void*, int);
 char* strchr(const char*, char c);

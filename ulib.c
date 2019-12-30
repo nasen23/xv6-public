@@ -33,6 +33,16 @@ strlen(const char *s)
   return n;
 }
 
+char* strcat(char *dst, const char *src) {
+  int dstlen = strlen(dst);
+  for (int i = 0; src[i]; i++) {
+    dst[dstlen + i] = src[i];
+  }
+
+  return dst;
+}
+
+
 void*
 memset(void *dst, int c, uint n)
 {
