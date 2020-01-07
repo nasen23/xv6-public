@@ -25,6 +25,9 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 
+int set_env(char *key, char *value);
+int get_env(char *key, char *dst);
+
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcat(char *dest, const char* src);

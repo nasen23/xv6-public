@@ -15,7 +15,14 @@
 #include "proc.h"
 #include "x86.h"
 
+#define KEY_UP     0xe2
+#define KEY_DOWN   0xe3
+#define KEY_LEFT   0xe4
+#define KEY_RIGHT  0xe5
+
 static void consputc(int);
+void cursor_forward();
+void cursor_backward();
 
 static int panicked = 0;
 
@@ -184,6 +191,7 @@ struct {
   uint r;  // Read index
   uint w;  // Write index
   uint e;  // Edit index
+  uint pos; // Current position = row * 80 + pos
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
@@ -213,6 +221,17 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
+    case KEY_LEFT:
+      if (input.pos > input.r) {
+        input.pos--;
+        cursor_backward();
+      }
+      break;
+    case KEY_RIGHT:
+      if (input.pos < input.e) {
+        input.pos++;
+        cursor_forward();
+      }
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
@@ -220,6 +239,7 @@ consoleintr(int (*getc)(void))
         consputc(c);
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
           input.w = input.e;
+          input.pos = input.e;
           wakeup(&input.r);
         }
       }
@@ -297,3 +317,40 @@ consoleinit(void)
   ioapicenable(IRQ_KBD, 0);
 }
 
+void cursor_backward() {
+  int pos;
+
+  // Get current cursor position
+  outb(CRTPORT, 14);
+  pos = inb(CRTPORT + 1) << 8;
+  outb(CRTPORT, 15);
+  pos |= inb(CRTPORT + 1);
+
+  // Cursor backward
+  pos--;
+
+  // Reset
+  outb(CRTPORT, 15);
+  outb(CRTPORT + 1, (unsigned char)(pos & 0xff));
+  outb(CRTPORT, 14);
+  outb(CRTPORT + 1, (unsigned char)((pos >> 8) & 0xff));
+}
+
+void cursor_forward() {
+  int pos;
+
+  // Get current cursor position
+  outb(CRTPORT, 14);
+  pos = inb(CRTPORT + 1) << 8;
+  outb(CRTPORT, 15);
+  pos |= inb(CRTPORT + 1);
+
+  // Cursor forward
+  pos++;
+
+  // Reset
+  outb(CRTPORT, 15);
+  outb(CRTPORT + 1, (unsigned char)(pos & 0xff));
+  outb(CRTPORT, 14);
+  outb(CRTPORT + 1, (unsigned char)((pos >> 8) & 0xff));
+}
