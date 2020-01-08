@@ -28,6 +28,7 @@ int uptime(void);
 int set_env(char *key, char *value);
 int get_env(char *key, char *dst);
 int history(void);
+int rename(char*, char*);
 
 // ulib.c
 int stat(const char*, struct stat*);

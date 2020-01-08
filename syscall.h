@@ -26,3 +26,4 @@
 #define SYS_history  24
 
 #define SYS_getkey 25
+#define SYS_rename 26

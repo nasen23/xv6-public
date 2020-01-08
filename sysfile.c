@@ -523,3 +523,97 @@ int sys_get_env(void) {
   strncpy(dst, env_vars.vars[index].val, env_vars.vars[index].vallen);
   return 0;
 }
+
+int sys_rename(void) {
+  // error code:
+  //   -1: old does not exist
+  //   -2: cannot link to new
+  //   -3: cannot unlink old
+  char name[DIRSIZ], *new, *old;
+  struct inode *dp, *ip;
+  struct dirent de;
+  uint off;
+
+  // get args
+  if(argstr(0, &old) < 0 || argstr(1, &new) < 0) {
+    return -1;
+  }
+
+  begin_op();
+  // check that old exist
+  if((ip = namei(old)) == 0) {
+    end_op();
+    return -1;
+  }
+
+  // link new
+  ilock(ip);
+  ip->nlink++;
+  iupdate(ip);
+  iunlock(ip);
+
+  // check new path exist
+  if((dp = nameiparent(new, name)) == 0) {
+    goto bad2;
+  }
+
+  ilock(dp);
+  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0) {
+    iunlockput(dp);
+    goto bad2;
+  }
+  iunlockput(dp);
+  iput(ip);
+
+  // unlink old
+  if((dp = nameiparent(old, name)) == 0){
+    end_op();
+    return -3;
+  }
+
+  ilock(dp);
+
+  // Cannot unlink "." or "..".
+  if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0) {
+    goto bad3;
+  }
+
+  if((ip = dirlookup(dp, name, &off)) == 0) {
+    goto bad3;
+  }
+  ilock(ip);
+
+  if(ip->nlink < 1) {
+    panic("rename: nlink < 1");
+  }
+
+  memset(&de, 0, sizeof(de));
+  if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de)) {
+    panic("rename: writei");
+  }
+  if(ip->type == T_DIR){
+    dp->nlink--;
+    iupdate(dp);
+  }
+  iunlockput(dp);
+  ip->nlink--;
+  iupdate(ip);
+  iunlockput(ip);
+
+  //successful exit
+  end_op();
+  return 0;
+
+bad2:
+  ilock(ip);
+  ip->nlink--;
+  iupdate(ip);
+  iunlockput(ip);
+  end_op();
+  return -2;
+
+bad3:
+  iunlockput(dp);
+  end_op();
+  return -3;
+}
