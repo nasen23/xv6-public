@@ -18,7 +18,6 @@ int fstat(int fd, struct stat*);
 int link(const char*, const char*);
 int mkdir(const char*);
 int chdir(const char*);
-char* getcwd(char*, int);
 int dup(int);
 int getpid(void);
 char* sbrk(int);
