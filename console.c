@@ -15,14 +15,25 @@
 #include "proc.h"
 #include "x86.h"
 
-#define KEY_UP     0xe2
-#define KEY_DOWN   0xe3
-#define KEY_LEFT   0xe4
-#define KEY_RIGHT  0xe5
+#define KEY_UP     0xE2
+#define KEY_DOWN   0xE3
+#define KEY_LEFT   0xE4
+#define KEY_RIGHT  0xE5
+#define KEY_TAB    0x09
 
 #define MAX_HISTORY 1000
 #define MAX_CMD_LEN 128
 
+#define CMD_CNT 20
+
+int buffer[3];
+
+char allcmds[CMD_CNT][MAX_CMD_LEN] = {
+  "cat", "echo", "forktest", "grep", "init",
+  "kill", "ln", "ls", "mkdir", "rm", "sh",
+  "stressfs", "usertests", "wc", "zombie",
+  "touch", "cp", "pwd", "history", "console"
+};
 char cmdhistory [MAX_HISTORY][MAX_CMD_LEN];
 int cmd_his_cnt = 0;
 int cur_cmd_idx = 0;
@@ -33,6 +44,7 @@ void cursor_backward();
 void insert_char(int, int);
 void remove_char();
 void add_history(char*);
+int isalpha(char c);
 
 static int panicked = 0;
 
@@ -228,24 +240,26 @@ consoleintr(int (*getc)(void))
       while(input.e != input.w &&
             input.buf[(input.e-1) % INPUT_BUF] != '\n'){
         input.e--;
+        input.pos--;
         consputc(BACKSPACE);
       }
       break;
     case C('H'): case '\x7f':  // Backspace
       if(input.e != input.w){
         input.e--;
+        input.pos--;
         consputc(BACKSPACE);
       }
       break;
     case KEY_LEFT:
-      if (input.pos > input.r) {
+      if (input.pos != input.w) {
         input.pos--;
         back_cnt++;
         cursor_backward();
       }
       break;
     case KEY_RIGHT:
-      if (input.pos < input.e) {
+      if (input.pos != input.e) {
         input.pos++;
         back_cnt--;
         cursor_forward();
@@ -294,6 +308,39 @@ consoleintr(int (*getc)(void))
         }
         input.pos = input.e;
       }
+      break;
+    case KEY_TAB: {
+      char *line = input.buf + input.r;
+      for (int i = 0; line[i]; i++) {
+        if (isalpha(line[i])) {
+          for (int j = 0; j < CMD_CNT; j++) {
+            int len = strlen(line);
+            if (!strncmp(line, allcmds[j], len)) {
+              int hislen = strlen(allcmds[j]);
+              strncpy(line, allcmds[j], hislen);
+              input.e += (hislen - len);
+              input.pos = input.e;
+              for (int k = len; k < hislen; k++) {
+                consputc((int)allcmds[j][k]);
+              }
+            }
+          }
+          for (int j = 0; j < cmd_his_cnt; j++) {
+            int len = strlen(line);
+            if (!strncmp(line, cmdhistory[j], len)) {
+              int hislen = strlen(cmdhistory[j]);
+              strncpy(line, cmdhistory[j], hislen);
+              input.e += (hislen - len);
+              input.pos = input.e;
+              for (int k = len; k < hislen; k++) {
+                consputc((int)cmdhistory[j][k]);
+              }
+            }
+          }
+          break;
+        }
+      }
+    }
       break;
     default:
       if (c != 0 && input.e - input.r < INPUT_BUF) {
@@ -415,7 +462,7 @@ consoleinit(void)
   devsw[CONSOLE].read = consoleread;
   cons.locking = 1;
 
-  picenable(IRQ_KBD);
+  /* picenable(IRQ_KBD); */
   ioapicenable(IRQ_KBD, 0);
 }
 
@@ -501,26 +548,32 @@ void remove_char() {
  * Get history cmd of index cmdidx and put it into buf
  */
 int sys_history(void) {
-  char *buf;
-  int cmdidx;
+  /* char *buf; */
+  /* int cmdidx; */
 
-  if (argstr(0, &buf) < 0) {
-    return -1;
+  for (int i = 0; i < cmd_his_cnt; i++) {
+    cprintf("%s\n", cmdhistory[i]);
   }
 
-  if (argint(1, &cmdidx) < 0) {
-    return -1;
-  }
+  return 0;
 
-  if (cmdidx >= cmd_his_cnt) {
-    return -1;
-  }
+  /* if (argstr(0, &buf) < 0) { */
+  /*   return -1; */
+  /* } */
 
-  if (cmdidx < 0 || cmdidx >= MAX_HISTORY) {
-    return -2;
-  }
+  /* if (argint(1, &cmdidx) < 0) { */
+  /*   return -1; */
+  /* } */
 
-  memmove(buf, cmdhistory[cmdidx], MAX_CMD_LEN * sizeof(char));
+  /* if (cmdidx >= cmd_his_cnt) { */
+  /*   return -1; */
+  /* } */
+
+  /* if (cmdidx < 0 || cmdidx >= MAX_HISTORY) { */
+  /*   return -2; */
+  /* } */
+
+  /* memmove(buf, cmdhistory[cmdidx], MAX_CMD_LEN * sizeof(char)); */
   return 0;
 }
 
@@ -546,4 +599,22 @@ void add_history(char *cmd) {
   memmove(cmdhistory[cmd_his_cnt - 1], cmd, len * sizeof(char));
   cmdhistory[cmd_his_cnt - 1][len] = 0;
   cur_cmd_idx = cmd_his_cnt - 1;
+}
+
+int isalpha(char c) {
+  return (c >= 'a' && c <= 'z') ||
+    (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9');
+}
+
+int
+readkey(int pid)
+{
+  int temp = buffer[0];
+  if (temp != 0) {
+    buffer[0] = buffer[1];
+    buffer[1] = buffer[2];
+    buffer[2] = 0;
+  }
+  return temp;
 }

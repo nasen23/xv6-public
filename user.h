@@ -1,5 +1,6 @@
 struct stat;
 struct rtcdate;
+struct charandcolor;
 
 // system calls
 int fork(void);
@@ -27,6 +28,7 @@ int uptime(void);
 
 int set_env(char *key, char *value);
 int get_env(char *key, char *dst);
+int history(void);
 
 // ulib.c
 int stat(const char*, struct stat*);
@@ -42,3 +44,7 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+
+// editor
+int updatesc(int, int, struct charandcolor*, int, int);
+int getkey(void);
