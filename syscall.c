@@ -108,6 +108,8 @@ extern int sys_set_env(void);
 extern int sys_get_env(void);
 extern int sys_history(void);
 
+extern int sys_getkey(void);
+
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
@@ -134,6 +136,8 @@ static int (*syscalls[])(void) = {
 [SYS_set_env] sys_set_env,
 [SYS_get_env] sys_get_env,
 [SYS_history] sys_history,
+
+[SYS_getkey] sys_getkey,
 };
 
 void

@@ -89,3 +89,7 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int sys_getkey(void) {
+  return readkey(myproc()->pid);
+}

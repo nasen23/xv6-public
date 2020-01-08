@@ -13,6 +13,8 @@
 
 #define MAXARGS 10
 
+char PATH[200] = {};
+
 struct cmd {
   int type;
 };
@@ -52,6 +54,7 @@ struct backcmd {
 int fork1(void);  // Fork but panics on failure.
 void panic(char*);
 struct cmd *parsecmd(char*);
+int strncmp(const char *src, const char *dst, int n);
 
 // Execute cmd.  Never returns.
 void
@@ -75,7 +78,10 @@ runcmd(struct cmd *cmd)
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       exit();
-    exec(ecmd->argv[0], ecmd->argv);
+    char ycmd[200] = {};
+    ycmd[0] = '/';
+    strcat(ycmd, ecmd->argv[0]);
+    exec(ycmd, ecmd->argv);
     printf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
 
@@ -141,11 +147,35 @@ getcmd(char *buf, int nbuf)
   return 0;
 }
 
+int export(char *buf) {
+  int i;
+
+  if (!buf || strchr(buf, '=') == 0) {
+    printf(2, "Usage: export key=value\n");
+    return -1;
+  }
+
+  for (i = 1; buf[i] != 0; ++i) {
+    if (buf[i] == '=') {
+      break;
+    }
+  }
+
+  buf[i] = 0;
+  set_env(buf, buf + i + 1);
+
+  return 0;
+}
+
 int
 main(void)
 {
   static char buf[100];
   int fd;
+
+  // Set PATH initially
+  PATH[0] = '/';
+  /* set_env("PWD", "/"); */
 
   // Ensure that three file descriptors are open.
   while((fd = open("console", O_RDWR)) >= 0){
@@ -157,30 +187,29 @@ main(void)
 
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
-    if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
+    if(!strncmp(buf, "cd ", 3)){
       // Chdir must be called by the parent, not the child.
       buf[strlen(buf)-1] = 0;  // chop \n
       if(chdir(buf+3) < 0)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
-    if (buf[0] == 'e' && buf[1] == 'x' && buf[2] == 'p' && buf[3] == 'o' &&
-      buf[4] == 'r' && buf[5] == 't' && buf[6] == ' ') {
+    if (!strncmp(buf, "export ", 7)) {
       // Export environment variable
-      int res = set_env("path", buf + 7);
-      printf(2, "set_env res: %d\n", res);
+      buf[strlen(buf) - 1] = 0;
+      export(buf + 7);
       continue;
     }
-    if (buf[0] == 'e' && buf[1] == 'c' && buf[2] == 'h' && buf[3] == 'o' && buf[4] == ' ') {
+    if (!strncmp(buf, "echo ", 5)) {
       // Get env var
       char *key = buf + 5;
+      key[strlen(key) - 1] = 0;
       char val[1024];
       int res = get_env(key, val);
-      printf(2, "res: %d\n", res);
       if (res == -1) {
-        printf(2, "echo failed!\n");
+        printf(2, "No environment variable '%s'\n", key);
       } else {
-        printf(2, "key: %s\n", val);
+        printf(2, "%s\n", val);
       }
       continue;
     }
@@ -488,7 +517,7 @@ nulterminate(struct cmd *cmd)
 
   case REDIR:
     rcmd = (struct redircmd*)cmd;
-    nulterminate(rcmd->cmd);
+
     *rcmd->efile = 0;
     break;
 
@@ -510,4 +539,14 @@ nulterminate(struct cmd *cmd)
     break;
   }
   return cmd;
+}
+
+int strncmp(const char *src, const char *dst, int n) {
+  for (int i = 0; i < n; i++) {
+    if (src[i] != dst[i]) {
+      return 1;
+    }
+  }
+
+  return 0;
 }
