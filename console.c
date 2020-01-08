@@ -213,10 +213,10 @@ struct {
 void
 consoleintr(int (*getc)(void))
 {
-  int c, doprocdump = 0;
+  int c;
   char buf[MAX_CMD_LEN];
 
-  acquire(&cons.lock);
+  acquire(&input.lock);
   while((c = getc()) >= 0){
     switch(c){
     case C('P'):  // Process listing.
@@ -296,7 +296,7 @@ consoleintr(int (*getc)(void))
       }
       break;
     default:
-      if(c != 0 && input.e-input.r < INPUT_BUF){
+      if (c != 0 && input.e - input.r < INPUT_BUF) {
         /* c = (c == '\r') ? '\n' : c; */
         /* input.buf[input.e++ % INPUT_BUF] = c; */
         /* consputc(c); */
@@ -315,7 +315,7 @@ consoleintr(int (*getc)(void))
 
           back_cnt = 0;
 
-          for(int i = input.w, k = 0; i < input.e - 1; i++, k++){
+          for (int i = input.w, k = 0; i < input.e - 1; i++, k++){
             buf[k] = input.buf[i % INPUT_BUF];
           }
           buf[(input.e - 1 - input.w) % INPUT_BUF] = 0;
@@ -326,14 +326,14 @@ consoleintr(int (*getc)(void))
           input.pos = input.e;
           wakeup(&input.r);
         } else {
-          if(back_cnt == 0){
+          if (back_cnt == 0){
 
             input.buf[input.e++ % INPUT_BUF] = c;
             input.pos ++;
 
             consputc(c);
           } else {
-            for(int k = input.e; k >= input.pos; k--){
+            for (int k = input.e; k >= input.pos; k--) {
               input.buf[(k + 1) % INPUT_BUF] = input.buf[k % INPUT_BUF];
             }
 
@@ -349,7 +349,7 @@ consoleintr(int (*getc)(void))
       break;
     }
   }
-  release(&cons.lock);
+  release(&input.lock);
 }
 
 int
@@ -360,15 +360,15 @@ consoleread(struct inode *ip, char *dst, int n)
 
   iunlock(ip);
   target = n;
-  acquire(&cons.lock);
+  acquire(&input.lock);
   while(n > 0){
     while(input.r == input.w){
       if(myproc()->killed){
-        release(&cons.lock);
+        release(&input.lock);
         ilock(ip);
         return -1;
       }
-      sleep(&input.r, &cons.lock);
+      sleep(&input.r, &input.lock);
     }
     c = input.buf[input.r++ % INPUT_BUF];
     if(c == C('D')){  // EOF
@@ -384,7 +384,7 @@ consoleread(struct inode *ip, char *dst, int n)
     if(c == '\n')
       break;
   }
-  release(&cons.lock);
+  release(&input.lock);
   ilock(ip);
 
   return target - n;
@@ -409,11 +409,13 @@ void
 consoleinit(void)
 {
   initlock(&cons.lock, "console");
+  initlock(&input.lock, "input");
 
   devsw[CONSOLE].write = consolewrite;
   devsw[CONSOLE].read = consoleread;
   cons.locking = 1;
 
+  picenable(IRQ_KBD);
   ioapicenable(IRQ_KBD, 0);
 }
 
