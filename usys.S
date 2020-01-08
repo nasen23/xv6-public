@@ -32,3 +32,4 @@ SYSCALL(uptime)
 
 SYSCALL(set_env)
 SYSCALL(get_env)
+SYSCALL(history)

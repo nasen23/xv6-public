@@ -23,3 +23,4 @@
 
 #define SYS_set_env  22
 #define SYS_get_env  23
+#define SYS_history  24

@@ -106,6 +106,7 @@ extern int sys_uptime(void);
 
 extern int sys_set_env(void);
 extern int sys_get_env(void);
+extern int sys_history(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -132,6 +133,7 @@ static int (*syscalls[])(void) = {
 
 [SYS_set_env] sys_set_env,
 [SYS_get_env] sys_get_env,
+[SYS_history] sys_history,
 };
 
 void

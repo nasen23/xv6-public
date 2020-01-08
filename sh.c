@@ -167,15 +167,22 @@ main(void)
     if (buf[0] == 'e' && buf[1] == 'x' && buf[2] == 'p' && buf[3] == 'o' &&
       buf[4] == 'r' && buf[5] == 't' && buf[6] == ' ') {
       // Export environment variable
-      set_env("path", buf + 7);
+      int res = set_env("path", buf + 7);
+      printf(2, "set_env res: %d\n", res);
       continue;
     }
     if (buf[0] == 'e' && buf[1] == 'c' && buf[2] == 'h' && buf[3] == 'o' && buf[4] == ' ') {
       // Get env var
       char *key = buf + 5;
       char val[1024];
-      get_env(key, val);
-      printf(2, "key: %s\n", val);
+      int res = get_env(key, val);
+      printf(2, "res: %d\n", res);
+      if (res == -1) {
+        printf(2, "echo failed!\n");
+      } else {
+        printf(2, "key: %s\n", val);
+      }
+      continue;
     }
     if(fork1() == 0)
       runcmd(parsecmd(buf));

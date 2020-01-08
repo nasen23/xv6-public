@@ -442,3 +442,84 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
+
+// Max number of env vars
+#define MAX_ENV_VAR_CNT 100
+
+typedef struct EnvVar {
+  char key[32];
+  char val[1024];
+  int keylen;
+  int vallen;
+} EnvVar;
+
+typedef struct EnvVars {
+  // All environment variables
+  EnvVar vars[MAX_ENV_VAR_CNT];
+  int length;
+} EnvVars;
+
+// Global env vars
+EnvVars env_vars;
+
+int env_var_existed(char *key) {
+  for (int i = 0; i < env_vars.length; i++) {
+    if (!strncmp(key, env_vars.vars[i].key, strlen(key))) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+/*
+ * Set environment variable
+ */
+int sys_set_env(void) {
+  char *key, *value;
+
+  // Get env var key
+  if (argstr(0, &key) < 0) {
+    return -1;
+  }
+
+  // Get env var value
+  if (argstr(1, &value) < 0) {
+    return -1;
+  }
+
+  int index = env_var_existed(key);
+  if (index == -1) {
+    int keylen = strlen(key);
+    int vallen = strlen(value);
+    strncpy(env_vars.vars[env_vars.length].key, key, keylen);
+    strncpy(env_vars.vars[env_vars.length].val, value, vallen);
+    env_vars.vars[env_vars.length].keylen = keylen;
+    env_vars.vars[env_vars.length].vallen = vallen;
+    env_vars.length++;
+  } else {
+    strncpy(env_vars.vars[index].val, value, strlen(value));
+  }
+
+  return 0;
+}
+
+int sys_get_env(void) {
+  char *key, *dst;
+
+  if (argstr(0, &key) < 0) {
+    return -1;
+  }
+
+  if (argstr(1, &dst) < 0) {
+    return -1;
+  }
+
+  int index = env_var_existed(key);
+  if (index == -1) {
+    return -1;
+  }
+
+  strncpy(dst, env_vars.vars[index].val, env_vars.vars[index].vallen);
+  return 0;
+}
